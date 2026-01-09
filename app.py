@@ -101,3 +101,24 @@ with tab3:
             st.pyplot(fig)
         else:
             st.error("CSV must have columns: Salinity, Rw")
+# Add a Credits tab
+tab1, tab2, tab3, tab4 = st.tabs([
+    "Archie Equation", 
+    "Porosity", 
+    "Salinity–Resistivity", 
+    "Credits"
+])
+
+with tab4:
+    st.header("👨‍💻 Credits")
+    st.markdown("""
+    This **Petrophysical Calculator App** was created by **Gerardo Monsegui**.
+
+    - 📚 Focus areas: Archie equation, porosity computation, salinity–resistivity relationships  
+    - 🛠️ Built with: Streamlit, NumPy, Pandas, Matplotlib  
+    - 🌍 Location: Merida, Venezuela  
+    - 🔗 Connect: [LinkedIn](https://www.linkedin.com/in/gmonsegui) | [Email](mailto:gmonsegui@gmail.com)  
+
+    ---
+    © 2026 Gerardo Monsegui — All rights reserved
+    """)
