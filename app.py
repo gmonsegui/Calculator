@@ -5,6 +5,17 @@ import matplotlib.pyplot as plt
 
 st.title("Petrophysical Calculator")
 
+# --- Sidebar with Author Info --- 
+with st.sidebar:
+	st.image("GM_LOGO.JPG", width=120) # optional logo/photo
+	st.markdown("### 👨‍💻 About the Author")
+	st.write("Developed by **Gerardo**")
+	st.write("📍 Merida, Venezuela")
+	st.write("📚 Focus: Archie equation, porosity, salinity–resistivity")
+	st.write("🛠️ Tools: Streamlit, NumPy, Pandas, Matplotlib")
+	st.write("🔗 [LinkedIn](https://www.linkedin.com/in/gmonsegui)")
+	st.write("📧 gmonsegui@gmail.com")
+
 # Define all tabs together 
 tab1, tab2, tab3, tab4 = st.tabs([ "Archie Equation", "Porosity", "Salinity–Resistivity", "Credits" ])
 
