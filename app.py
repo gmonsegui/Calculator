@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 
 st.title("Petrophysical Calculator")
 
-# Tabs for modules
-tab1, tab2, tab3 = st.tabs(["Archie Equation", "Porosity", "Salinity–Resistivity"])
+# Define all tabs together 
+tab1, tab2, tab3, tab4 = st.tabs([ "Archie Equation", "Porosity", "Salinity–Resistivity", "Credits" ])
 
 # --- Archie Equation Calculator ---
 with tab1:
@@ -102,12 +102,6 @@ with tab3:
         else:
             st.error("CSV must have columns: Salinity, Rw")
 # Add a Credits tab
-tab1, tab2, tab3, tab4 = st.tabs([
-    "Archie Equation", 
-    "Porosity", 
-    "Salinity–Resistivity", 
-    "Credits"
-])
 
 with tab4:
     st.header("👨‍💻 Credits")
