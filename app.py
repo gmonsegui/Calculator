@@ -9,7 +9,7 @@ st.title("Petrophysical Calculator")
 with st.sidebar:
 	st.image("GM_LOGO.JPG", width=120) # optional logo/photo
 	st.markdown("### 👨‍💻 About the Author")
-	st.write("Developed by **Gerardo**")
+	st.write("Developed by **Gerardo Monsegui**")
 	st.write("📍 Merida, Venezuela")
 	st.write("📚 Focus: Archie equation, porosity, salinity–resistivity")
 	st.write("🛠️ Tools: Streamlit, NumPy, Pandas, Matplotlib")
