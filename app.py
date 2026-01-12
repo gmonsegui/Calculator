@@ -68,9 +68,11 @@ with st.sidebar:
     # User-provided README usage text shown in the sidebar
     with st.expander("How to use the calculator"):
         st.markdown(
-            """Petrophysical Calculator was designed to make quick Water Saturation using Archie equation as well as Porosity computation using Density and/or Sonic compressional data. Lastly the Water salinity estimation.
+            """
+Petrophysical Calculator was designed to make quick Water Saturation using Archie equation as well as Porosity computation using Density and/or Sonic compressional data. Lastly the Water salinity estimation.
 
-Select the calculation by clicking on the tab, input the values and parameters or use the sliding bar to obtain the results."""
+Select the calculation by clicking on the tab, input the values and parameters or use the sliding bar to obtain the results.
+            """
         )
 
     # Sample CSV and download
@@ -106,7 +108,6 @@ with tab1:
         m = st.slider("Cementation exponent m", 1.0, 4.0, 2.0)
         n = st.slider("Saturation exponent n", 1.0, 4.0, 2.0)
         submitted = st.form_submit_button("Compute")
-
     if submitted:
         if Rt > 20000.0 or Rw > 100.0:
             st.error("Rt must be ≤ 20,000 and Rw must be ≤ 100. Please adjust inputs.")
