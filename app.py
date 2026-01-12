@@ -1,28 +1,3 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-BRANCH="feature/altair-docker-readme"
-ZIPFILE="feature-altair-docker-readme.zip"
-
-# Check we are inside a git repo
-if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-  echo "ERROR: This script must be run from the root of a git repository."
-  exit 1
-fi
-
-# Create branch
-git fetch origin
-git checkout -b "$BRANCH"
-
-echo "Creating directories..."
-mkdir -p calculator
-mkdir -p tests
-mkdir -p .github/workflows
-mkdir -p sample_data
-
-echo "Writing files..."
-
-cat > app.py <<'PY'
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -93,11 +68,9 @@ with st.sidebar:
     # User-provided README usage text shown in the sidebar
     with st.expander("How to use the calculator"):
         st.markdown(
-            """
-Petrophysical Calculator was designed to make quick Water Saturation using Archie equation as well as Porosity computation using Density and/or Sonic compressional data. Lastly the Water salinity estimation.
+            """Petrophysical Calculator was designed to make quick Water Saturation using Archie equation as well as Porosity computation using Density and/or Sonic compressional data. Lastly the Water salinity estimation.
 
-Select the calculation by clicking on the tab, input the values and parameters or use the sliding bar to obtain the results.
-            """
+Select the calculation by clicking on the tab, input the values and parameters or use the sliding bar to obtain the results."""
         )
 
     # Sample CSV and download
@@ -133,6 +106,7 @@ with tab1:
         m = st.slider("Cementation exponent m", 1.0, 4.0, 2.0)
         n = st.slider("Saturation exponent n", 1.0, 4.0, 2.0)
         submitted = st.form_submit_button("Compute")
+
     if submitted:
         if Rt > 20000.0 or Rw > 100.0:
             st.error("Rt must be ≤ 20,000 and Rw must be ≤ 100. Please adjust inputs.")
@@ -262,208 +236,3 @@ with tab4:
     © 2026 Gerardo Monsegui — All rights reserved
     """
     )
-PY
-
-cat > calculator/core.py <<'PY'
-from __future__ import annotations
-from typing import Tuple
-import math
-import numpy as np
-
-Number = float
-
-class CalcError(ValueError):
-    pass
-
-# Define maximum sensible limits
-MAX_RT = 20000.0
-MAX_RW = 100.0
-
-def archie(
-    Rt: Number,
-    Rw: Number,
-    phi: Number,
-    a: Number = 1.0,
-    m: Number = 2.0,
-    n: Number = 2.0,
-    max_rt: Number = MAX_RT,
-    max_rw: Number = MAX_RW,
-) -> Tuple[Number, Number, Number]:
-    """
-    Return (F, Sw, Sh)
-    F = a / phi^m
-    Sw = ((a * Rw) / (phi^m * Rt))^(1/n)
-    Sh = 1 - Sw
-    """
-    if Rt <= 0 or Rw <= 0 or phi <= 0:
-        raise CalcError("Rt, Rw and porosity (phi) must be > 0")
-    if Rt > max_rt:
-        raise CalcError(f"Rt is greater than the allowed maximum of {max_rt}.")
-    if Rw > max_rw:
-        raise CalcError(f"Rw is greater than the allowed maximum of {max_rw}.")
-    if not (0 < phi <= 1):
-        raise CalcError("phi (porosity) must be in (0, 1]")
-    F = a / (phi ** m)
-    Sw = ((a * Rw) / (phi ** m * Rt)) ** (1.0 / n)
-    Sw = float(np.clip(Sw, 0.0, 1.0))
-    Sh = 1.0 - Sw
-    return float(F), Sw, Sh
-
-def porosity_density(rho_ma: Number, rho_b: Number, rho_f: Number) -> Number:
-    if rho_ma == rho_f:
-        raise CalcError("Matrix and fluid densities must differ.")
-    return (rho_ma - rho_b) / (rho_ma - rho_f)
-
-def porosity_sonic(dt_b: Number, dt_ma: Number, dt_f: Number) -> Number:
-    if dt_f == dt_ma:
-        raise CalcError("dt fluid and dt matrix must differ.")
-    return (dt_b - dt_ma) / (dt_f - dt_ma)
-
-def temperature_correct_rw(Rw_lab: Number, T_lab: Number, T_formation: Number) -> Number:
-    # Arps correction: Rw_T2 = Rw_T1 * (T2 + 6.77) / (T1 + 6.77)
-    denom = T_lab + 6.77
-    if denom == 0:
-        raise CalcError("Invalid lab temperature producing division by zero.")
-    return Rw_lab * (T_formation + 6.77) / denom
-
-def chlorinity_to_salinity(Cl: Number) -> Number:
-    return 1.80655 * Cl
-
-def empirical_salinity_rw_fit(salinity: np.ndarray, rw: np.ndarray) -> Tuple[float, float]:
-    """
-    Fit log(Rw) = slope * log(Sal) + intercept
-    Return (k, b) for Rw = k * Sal^(-b) where b = -slope
-    """
-    if len(salinity) < 2:
-        raise CalcError("Need at least two data points for fitting.")
-    if np.any(salinity <= 0) or np.any(rw <= 0):
-        raise CalcError("Salinity and Rw must be > 0 for log-log fit.")
-    logS = np.log(salinity)
-    logRw = np.log(rw)
-    slope, intercept = np.polyfit(logS, logRw, 1)
-    b = -slope
-    k = float(math.exp(intercept))
-    return k, b
-PY
-
-cat > requirements.txt <<'PY'
-streamlit>=1.22
-numpy>=1.24
-pandas>=2.1
-altair>=5.0
-PY
-
-cat > requirements-dev.txt <<'PY'
-pytest>=7.4
-black>=24.3.0
-flake8>=6.0.0
-isort>=5.13.0
-PY
-
-cat > tests/test_core.py <<'PY'
-import math
-import numpy as np
-import pytest
-from calculator.core import (
-    archie,
-    porosity_density,
-    porosity_sonic,
-    temperature_correct_rw,
-    chlorinity_to_salinity,
-    empirical_salinity_rw_fit,
-    CalcError,
-)
-
-def test_archie_basic():
-    F, Sw, Sh = archie(Rt=10.0, Rw=0.1, phi=0.2, a=1.0, m=2.0, n=2.0)
-    assert pytest.approx(F, rel=1e-6) == 25.0
-    assert 0 <= Sw <= 1
-    assert pytest.approx(Sw + Sh, rel=1e-9) == 1.0
-
-def test_porosity_density_and_sonic():
-    assert pytest.approx(porosity_density(2.65, 2.35, 1.0), rel=1e-6) == (2.65 - 2.35) / (2.65 - 1.0)
-    assert pytest.approx(porosity_sonic(80.0, 55.5, 189.0), rel=1e-6) == (80.0 - 55.5) / (189.0 - 55.5)
-
-def test_temperature_and_chlorinity():
-    corrected = temperature_correct_rw(0.1, 25.0, 75.0)
-    assert corrected > 0
-    assert chlorinity_to_salinity(10.0) == pytest.approx(18.0655)
-
-def test_empirical_fit():
-    sal = np.array([10.0, 20.0, 30.0])
-    rw = np.array([0.1, 0.06, 0.04])
-    k, b = empirical_salinity_rw_fit(sal, rw)
-    assert k > 0
-    assert b > 0
-
-def test_invalid_inputs():
-    with pytest.raises(CalcError):
-        archie(0, 0.1, 0.2)
-    with pytest.raises(CalcError):
-        porosity_density(2.0, 2.0, 2.0)
-PY
-
-cat > .github/workflows/ci.yml <<'PY'
-name: CI
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
-      - name: Run linters
-        run: |
-          black --check .
-          flake8
-      - name: Run tests
-        run: pytest -q
-PY
-
-cat > Dockerfile <<'PY'
-FROM python:3.11-slim
-
-WORKDIR /app
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
-
-COPY . /app
-
-EXPOSE 8501
-
-CMD ["streamlit", "run", "app.py", "--server.headless=true", "--server.port=8501", "--server.enableCORS=false"]
-PY
-
-cat > README.md <<'PY'
-# Petrophysical Calculator
-
-Petrophysical Calculator was designed to make quick Water Saturation using Archie equation as well as Porosity computation using Density and/or Sonic compressional data. Lastly the Water salinity estimation.
-Select the calculation by clicking on the tab, input the values and parameters or use the sliding bar to obtain the results.
-
----
-
-## Features
-- Archie equation calculator (Formation factor F, Water saturation Sw, Hydrocarbon saturation Sh)
-- Porosity calculators (Density method, Sonic method, Neutron–Density cross-over hint)
-- Salinity–Resistivity temperature correction and empirical log–log fit
-- Interactive Altair plot for Salinity vs Rw (hover tooltips, zoom/pan)
-- Downloadable sample CSV and Docker-ready deployment
